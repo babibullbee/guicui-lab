@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>GUI×CUI 操作ラボ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E8ECF1; --panel:#FFFFFF; --panel-2:#F3F5F8; --ink:#17202B; --muted:#586475;
+  --line:#D2D9E2; --hover:#EDF2FA; --accent:#2A5CD6; --accent-ink:#FFFFFF;
+  --sel:#DCE7FF; --sel-line:#8EAEF2; --ok:#1C8448; --ok-bg:#E2F4E9; --warn:#A5610A; --warn-bg:#FBEFD9;
+  --shadow:0 1px 2px rgba(20,30,50,.08),0 6px 20px rgba(20,30,50,.08);
+  --ui:"BIZ UDPGothic","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --mono:"BIZ UDGothic","MS Gothic","Osaka-Mono",ui-monospace,monospace;
+  --t-bg:#0C0C0C; --t-fg:#CCCCCC;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#10141A; --panel:#19202A; --panel-2:#212935; --ink:#E5EAF1; --muted:#9AA5B5;
+    --line:#2E3846; --hover:#232D3B; --accent:#7EA1FF; --accent-ink:#0C1222;
+    --sel:#233761; --sel-line:#4C70C2; --ok:#56C987; --ok-bg:#163224; --warn:#E3A64B; --warn-bg:#35280F;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10141A; --panel:#19202A; --panel-2:#212935; --ink:#E5EAF1; --muted:#9AA5B5;
+  --line:#2E3846; --hover:#232D3B; --accent:#7EA1FF; --accent-ink:#0C1222;
+  --sel:#233761; --sel-line:#4C70C2; --ok:#56C987; --ok-bg:#163224; --warn:#E3A64B; --warn-bg:#35280F;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:14px;line-height:1.6}
+button{font:inherit;color:inherit;cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.45}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);padding-inline:16px;gap:10px;padding-block:10px 12px;box-sizing:border-box}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto;min-width:0}
+.mark{display:grid;grid-template-columns:1fr 1fr;width:44px;height:30px;border-radius:6px;overflow:hidden;box-shadow:var(--shadow);flex:none}
+.mark span{display:grid;place-items:center;font:700 12px/1 var(--mono)}
+.mark .g{background:var(--accent);color:var(--accent-ink)}
+.mark .c{background:#0C0C0C;color:#CCCCCC}
+.brand h1{margin:0;font-size:19px;line-height:1.2;letter-spacing:.02em;text-wrap:balance}
+.brand p{margin:0;color:var(--muted);font-size:12px}
+.modes{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px}
+.modes button{border:0;background:transparent;padding:6px 14px;border-radius:6px;font-weight:700;font-size:13px;color:var(--muted)}
+.modes button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.modes button[data-view="cui"][aria-selected="true"]{background:#0C0C0C;color:#E6E6E6}
+.demo{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;font-size:13px}
+
+/* layout */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;min-height:0}
+.stage{position:relative;display:grid;gap:12px;min-height:0;grid-template-columns:minmax(0,1fr)}
+.stage[data-view="both"]{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.stage[data-view="gui"] .pane-cui,.stage[data-view="cui"] .pane-gui{display:none}
+.pane{min-height:0;display:flex;flex-direction:column}
+
+/* explorer */
+.win{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}
+.win:focus{outline:none}
+.win-title{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;font-size:12.5px;color:var(--muted);background:var(--panel-2);border-bottom:1px solid var(--line)}
+.win-title b{color:var(--ink);font-weight:700}
+.win-ctrl{letter-spacing:.8em;font-size:11px;user-select:none}
+.toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.nav-btn{width:32px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:16px;line-height:1;flex:none}
+.crumbs{flex:1;min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:2px;border:1px solid var(--line);border-radius:6px;padding:2px 6px;background:var(--panel-2);min-height:30px;box-sizing:border-box}
+.crumbs .pc{color:var(--muted);font-size:12.5px;padding:0 2px}
+.crumb{border:1px solid transparent;background:transparent;border-radius:4px;padding:1px 6px;font-size:13px}
+.crumb:hover{background:var(--hover)}
+.sep{color:var(--muted);font-size:12px}
+.ribbon{display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px;border-bottom:1px solid var(--line)}
+.ribbon button{border:1px solid transparent;background:transparent;border-radius:6px;padding:4px 9px;font-size:12.5px;display:inline-flex;align-items:center;gap:6px}
+.ribbon button:hover:not(:disabled){background:var(--hover);border-color:var(--line)}
+.ribbon svg{width:16px;height:16px;flex:none}
+.items{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));align-content:start;gap:4px;padding:10px}
+.item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px 6px;border:1px solid transparent;border-radius:6px;text-align:center;user-select:none;-webkit-user-select:none;touch-action:none}
+.item:hover{background:var(--hover)}
+.item.sel{background:var(--sel);border-color:var(--sel-line)}
+.item.cut{opacity:.5}
+.item.drop-hover,.crumb.drop-hover{outline:2px solid var(--accent);outline-offset:-2px;background:var(--sel)}
+.ico{width:52px;height:46px;display:grid;place-items:center}
+.ico svg{width:100%;height:100%}
+.lbl{font-size:12.5px;line-height:1.35;word-break:break-all;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ren{width:100%;box-sizing:border-box;font:inherit;font-size:12.5px;padding:1px 3px;border:1px solid var(--accent);border-radius:3px;background:var(--panel);color:var(--ink);text-align:center}
+.empty{grid-column:1/-1;color:var(--muted);text-align:center;padding:40px 0;font-size:13px}
+.status{padding:4px 12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);background:var(--panel-2);font-variant-numeric:tabular-nums}
+
+/* terminal (always the real console look) */
+.term{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;box-shadow:var(--shadow);border:1px solid #2A2A2A;background:var(--t-bg)}
+.term-title{display:flex;justify-content:space-between;padding:6px 12px;font-size:12.5px;color:#D8D8D8;background:#1F1F1F;border-bottom:1px solid #2A2A2A}
+.term-body{flex:1;min-height:0;overflow:auto;padding:10px 12px 14px;color:var(--t-fg);font:15px/1.5 var(--mono);cursor:text}
+#term-out{white-space:pre-wrap;word-break:break-all}
+.term-line{display:flex;align-items:baseline}
+#term-prompt{white-space:pre;flex:none}
+#term-in{flex:1;min-width:40px;background:transparent;border:0;outline:none;color:inherit;font:inherit;padding:0;caret-color:currentColor}
+.t-err{color:#F48771}
+.t-note{color:#8FB8E8}
+
+/* side */
+.side{min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+.side h2{margin:0;font-size:15px;letter-spacing:.04em}
+.side h2 small{font-weight:400;color:var(--muted);font-size:12px;margin-left:6px}
+.run{border:2px solid var(--accent);border-radius:10px;padding:12px;display:grid;gap:8px;background:var(--panel-2)}
+.run.cui{border-color:#3A3A3A}
+.run-top{display:flex;align-items:center;gap:8px;font-size:13px}
+.mode-chip{font:700 11.5px/1 var(--mono);padding:4px 7px;border-radius:4px;background:var(--accent);color:var(--accent-ink)}
+.mode-chip.cui{background:#0C0C0C;color:#E6E6E6}
+.run-nums{display:flex;align-items:baseline;gap:16px;font-variant-numeric:tabular-nums}
+.run-time{font:700 34px/1 var(--mono)}
+.run-time small,.run-ops small{font-size:13px;font-weight:400;margin-left:3px;color:var(--muted)}
+.run-ops{font:700 20px/1 var(--mono)}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.run-btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:6px 12px;font-size:13px}
+.missions{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.mis{border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.mis.open{border-color:var(--sel-line)}
+.mis-head{width:100%;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;text-align:left;background:transparent;border:0;padding:9px 10px}
+.mis-head:hover{background:var(--hover)}
+.mis-no{grid-row:span 2;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--line);font:700 13px/1 var(--mono)}
+.mis-t{font-weight:700;font-size:13.5px}
+.mis-t em{font-style:normal;font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-bg);border-radius:4px;padding:1px 5px;margin-left:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:11.5px/1.2 var(--mono);padding:2px 6px;border-radius:4px;background:var(--panel-2);color:var(--muted);font-variant-numeric:tabular-nums}
+.chip.done{background:var(--ok-bg);color:var(--ok)}
+.chip.part{background:var(--warn-bg);color:var(--warn)}
+.mis-body{display:none;padding:0 10px 10px 46px;font-size:13px}
+.mis.open .mis-body{display:grid;gap:8px}
+.mis-body p{margin:0}
+.mis-btns{display:flex;gap:8px;flex-wrap:wrap}
+.go{border:0;border-radius:7px;padding:7px 12px;font-weight:700;font-size:13px}
+.go-gui{background:var(--accent);color:var(--accent-ink)}
+.go-cui{background:#0C0C0C;color:#E6E6E6;font-family:var(--mono)}
+details{font-size:12.5px;color:var(--muted)}
+summary{cursor:pointer;color:var(--ink)}
+details code,.mono{font-family:var(--mono);background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--ink);word-break:break-all}
+.hint{margin:6px 0 0;display:grid;gap:4px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:5px 4px;text-align:left;vertical-align:top}
+th{font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:.04em}
+td.win{color:var(--ok);font-weight:700}
+.ask{margin:0;padding-left:1.2em;font-size:12.5px;color:var(--muted)}
+.note{font-size:12px;color:var(--muted);margin:0;border-top:1px solid var(--line);padding-top:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* app windows, menus, toast */
+.layer{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,15,25,.35);z-index:20;padding:16px}
+.appwin{width:min(620px,100%);max-height:calc(100% - 32px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden}
+.appwin-title{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 6px 12px;font-size:13px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+.x{border:0;background:transparent;width:34px;height:28px;border-radius:5px;font-size:15px}
+.x:hover{background:#C42B1C;color:#fff}
+.np-menu{font-size:12.5px;color:var(--muted);padding:4px 12px;border-bottom:1px solid var(--line);word-spacing:.8em}
+#np-text{min-height:260px;flex:1;resize:vertical;border:0;padding:10px 12px;font:15px/1.6 var(--mono);background:var(--panel);color:var(--ink);outline:none}
+.np-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.photo{background:#111;padding:14px;display:grid;place-items:center}
+.photo svg{width:100%;max-width:520px;height:auto;border-radius:4px}
+.docpage{background:var(--panel-2);padding:18px;overflow:auto}
+.docpage div{background:#fff;color:#222;max-width:460px;margin:0 auto;padding:28px 32px;box-shadow:0 2px 8px rgba(0,0,0,.15);white-space:pre-wrap;font-size:13.5px;line-height:1.8}
+.ctx{position:fixed;z-index:30;min-width:210px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:4px}
+.ctx button{display:flex;justify-content:space-between;width:100%;border:0;background:transparent;padding:6px 10px;border-radius:5px;font-size:13px;text-align:left;gap:20px}
+.ctx button:hover:not(:disabled){background:var(--hover)}
+.ctx kbd{font:11.5px var(--mono);color:var(--muted)}
+.ctx hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.ghost{position:fixed;z-index:40;pointer-events:none;background:var(--accent);color:var(--accent-ink);font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:999px;box-shadow:var(--shadow);white-space:nowrap}
+.toast{position:fixed;z-index:50;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:13px;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.clear-card{background:var(--panel);border-radius:14px;padding:26px 30px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);width:min(360px,100%);display:grid;gap:10px}
+.clear-card h3{margin:0;font-size:28px;letter-spacing:.08em}
+.clear-card .big{font:700 30px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.clear-card p{margin:0;color:var(--muted);font-size:13px}
+.clear-card.ok h3{color:var(--ok)}
+.clear-card.stop h3{color:var(--warn)}
+
+@media (max-width:900px){
+  html,body{height:auto}
+  .app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .stage{height:72vh;min-height:440px}
+  .stage[data-view="both"]{grid-template-columns:minmax(0,1fr);grid-template-rows:1fr 1fr;height:110vh}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><span class="g">GUI</span><span class="c">&gt;_</span></div>
+      <div>
+        <h1>GUI×CUI 操作ラボ</h1>
+        <p>工業情報数理 2章2節「ソフトウェアの基礎」 OSの操作環境（教科書 p.38〜40）</p>
+      </div>
+    </div>
+    <div class="modes" role="tablist" aria-label="表示の切りかえ">
+      <button id="tab-gui" role="tab" data-view="gui">GUI</button>
+      <button id="tab-cui" role="tab" data-view="cui">CUI</button>
+      <button id="tab-both" role="tab" data-view="both">ならべて表示</button>
+    </div>
+    <button class="demo" id="demo" title="先生用：コマンドを自動で入力して見せます">黒い画面デモ</button>
+  </header>
+
+  <main class="main">
+    <section class="stage" id="stage" data-view="both">
+      <div class="pane pane-gui" id="pane-gui">
+        <div class="win" id="explorer" tabindex="0" aria-label="エクスプローラー（GUI）">
+          <div class="win-title"><span><b>エクスプローラー</b>　GUI：マウスで操作</span><span class="win-ctrl" aria-hidden="true">—▢✕</span></div>
+          <div class="toolbar">
+            <button class="nav-btn" id="btn-back" title="戻る (Alt+←)" aria-label="戻る">←</button>
+            <button class="nav-btn" id="btn-up" title="1つ上のフォルダーへ (Alt+↑)" aria-label="1つ上のフォルダーへ">↑</button>
+            <div class="crumbs" id="crumbs"></div>
+          </div>
+          <div class="ribbon" id="ribbon">
+            <button data-act="newdir" title="Ctrl+Shift+N"><svg viewBox="0 0 16 16"><path d="M1 3.5h5l1.5 1.5H15v8.5H1z" fill="#F2C14E"/><path d="M11 7v5M8.5 9.5h5" stroke="currentColor" stroke-width="1.5"/></svg>新しいフォルダー</button>
+            <button data-act="rename" title="F2"><svg viewBox="0 0 16 16"><path d="M2 12l8-8 2 2-8 8H2z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>名前の変更</button>
+            <button data-act="copy" title="Ctrl+C"><svg viewBox="0 0 16 16"><rect x="5" y="5" width="8" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3 11V3a1 1 0 0 1 1-1h6" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>コピー</button>
+            <button data-act="cut" title="Ctrl+X"><svg viewBox="0 0 16 16"><circle cx="4.5" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11.5" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.8 10.5L12 2M10.2 10.5L4 2" stroke="currentColor" stroke-width="1.3"/></svg>切り取り</button>
+            <button data-act="paste" title="Ctrl+V"><svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="6" y="1.5" width="4" height="3" rx=".8" fill="currentColor"/></svg>貼り付け</button>
+            <button data-act="delete" title="Delete"><svg viewBox="0 0 16 16"><path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 10h5.6l.7-10" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>削除</button>
+          </div>
+          <div class="items" id="items"></div>
+          <div class="status" id="gui-status"></div>
+        </div>
+      </div>
+      <div class="pane pane-cui" id="pane-cui">
+        <div class="term">
+          <div class="term-title"><span><b>コマンド プロンプト</b>　CUI：キーボードで命令</span><span aria-hidden="true">—▢✕</span></div>
+          <div class="term-body" id="term-body">
+            <div id="term-out"></div>
+            <div class="term-line"><span id="term-prompt"></span><input id="term-in" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="コマンド入力"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="ミッション">
+      <div class="run" id="run" hidden>
+        <div class="run-top"><span class="mode-chip" id="run-chip">GUI</span><b id="run-title"></b></div>
+        <div class="run-nums"><span class="run-time" id="run-time">0.0<small>秒</small></span><span class="run-ops" id="run-ops">0<small>回操作</small></span></div>
+        <div class="bar" id="run-bar" hidden><i id="run-bar-i"></i></div>
+        <div class="row" id="run-prog" hidden></div>
+        <div class="run-btns"><button class="btn" id="run-stop">やめる</button><button class="btn" id="run-giveup" hidden>ここまでで記録する</button></div>
+      </div>
+
+      <h2>ミッション<small>同じ作業を GUI と CUI の両方でやってみよう</small></h2>
+      <ol class="missions" id="missions"></ol>
+
+      <section>
+        <h2>記録<small>時間と操作回数（クリック・キー入力）</small></h2>
+        <div style="overflow-x:auto"><table id="results"></table></div>
+        <ol class="ask">
+          <li>GUI のほうが速かったミッションはどれ？ なぜだろう？</li>
+          <li>CUI のほうが速かったミッションはどれ？ なぜだろう？</li>
+        </ol>
+        <div class="row" style="margin-top:8px"><button class="btn" id="copy-results">記録をコピー</button><button class="btn" id="clear-results">記録を消す</button></div>
+      </section>
+
+      <p class="note">「ならべて表示」にすると、CUI で行った操作が GUI の画面にもすぐに表れます。どちらも同じ OS に指示を出しているからです（教科書 p.38 図12）。<br>このページのファイルは練習用です。あなたのパソコンの本物のファイルは変わりません。</p>
+      <button class="btn" id="reset-fs">ファイルを最初の状態にもどす</button>
+    </aside>
+  </main>
+</div>
+
+<div class="layer" id="winlayer" hidden></div>
+<div class="layer" id="clear" hidden></div>
+<div class="ctx" id="ctx" hidden></div>
+<div class="ghost" id="ghost" hidden></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const low = s => s.toLowerCase();
+const HOME = ['Users', 'seito'];
+const T0 = new Date(2026, 4, 12, 10, 27);
+
+/* ---------- virtual file system ---------- */
+const D = (name, children = []) => ({ name, type: 'dir', children, mtime: new Date(T0) });
+const F = (name, content = '', size = null) => ({ name, type: 'file', content, size, mtime: new Date(T0) });
+function baseTree() {
+  const home = D('seito', [
+    D('提出'),
+    D('写真', [F('文化祭.jpg', '', 184320), F('体育祭.jpg', '', 201728), F('修学旅行.jpg', '', 226304)]),
+    D('バックアップ'),
+    F('宿題.txt', '数学のプリント p.12〜15 を解く。\n提出は金曜日の朝のSHRまで。'),
+    F('メモ.txt', '次の実習：直流回路の測定\n持ち物：関数電卓・作業服・実習ノート'),
+    F('レポート.docx', '電気基礎 実験レポート\n\n題目　オームの法則の検証\n\n1. 目的\n抵抗に加える電圧を変えたときの電流を測定し、電圧と電流が比例することを確かめる。\n\n2. 結果\n電圧を 2 V ずつ上げると、電流は 20 mA ずつ増えた。', 24576)
+  ]);
+  const pub = D('Public', [D('Documents'), D('Pictures'), D('Music')]);
+  return D('C:', [D('Users', [home, pub]), windowsTree()]);
+}
+// 練習用の「それらしい」システムフォルダ（dir /s の見せ場用。サイズと日付は名前から決まる）
+function seeded(name) { let h = 2166136261; for (const ch of name) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function sysFile(name, lo, hi) {
+  const h = seeded(name);
+  const f = F(name, '', lo + (h % (hi - lo)));
+  f.mtime = new Date(2025, 3 + (h % 6), 1 + (h >> 8) % 27, (h >> 12) % 24, (h >> 16) % 60);
+  f.sys = true;
+  return f;
+}
+function sysDir(name, children) { const d = D(name, children); const h = seeded(name); d.mtime = new Date(2025, 3 + (h % 6), 1 + (h >> 8) % 27, (h >> 12) % 24, (h >> 16) % 60); return d; }
+function windowsTree() {
+  const s32 = ('aadauthhelper.dll accessibilitycpl.dll advapi32.dll appwiz.cpl at.exe atl.dll audiodg.exe autochk.exe bcrypt.dll calc.exe ' +
+    'certutil.exe chkdsk.exe cmd.exe comctl32.dll comdlg32.dll control.exe credui.dll crypt32.dll cscript.exe d3d11.dll d3d12.dll dbghelp.dll ' +
+    'dhcpcsvc.dll diskpart.exe dnsapi.dll dwm.exe dxgi.dll find.exe findstr.exe fontdrvhost.exe gdi32.dll hostname.exe imm32.dll ipconfig.exe ' +
+    'kernel32.dll kernelbase.dll logonui.exe lsass.exe mmc.exe more.com msvcrt.dll mspaint.exe netsh.exe netstat.exe notepad.exe ntdll.dll ' +
+    'ole32.dll oleaut32.dll ping.exe powercfg.exe robocopy.exe rpcrt4.dll rundll32.exe sc.exe services.exe setupapi.dll shell32.dll shlwapi.dll ' +
+    'sihost.exe smss.exe sort.exe svchost.exe systeminfo.exe taskkill.exe tasklist.exe taskmgr.exe tracert.exe tree.com user32.dll userinit.exe ' +
+    'uxtheme.dll version.dll where.exe whoami.exe win32k.sys winload.exe winlogon.exe wininet.dll winmm.dll ws2_32.dll wscript.exe xcopy.exe').split(' ');
+  const core = 'console datetime debug errorhandling file handle heap interlocked libraryloader localization memory namedpipe processenvironment processthreads profile rtlsupport string synch sysinfo timezone util'.split(' ');
+  const s32files = [...s32, ...core.map(c => `api-ms-win-core-${c}-l1-1-0.dll`)].map(n => sysFile(n, 12000, 4800000));
+  const drivers = 'acpi.sys disk.sys fltmgr.sys http.sys ndis.sys ntfs.sys pci.sys storport.sys tcpip.sys usbhub3.sys usbstor.sys usbxhci.sys volmgr.sys wdf01000.sys'.split(' ').map(n => sysFile(n, 40000, 3200000));
+  const etc = 'hosts lmhosts.sam networks protocol services'.split(' ').map(n => sysFile(n, 400, 18000));
+  const config = 'DEFAULT SAM SECURITY SOFTWARE SYSTEM'.split(' ').map(n => sysFile(n, 65536, 90000000));
+  const ja = 'cmd.exe.mui notepad.exe.mui shell32.dll.mui taskmgr.exe.mui user32.dll.mui'.split(' ').map(n => sysFile(n, 3000, 900000));
+  const fonts = 'arial.ttf BIZ-UDGothicR.ttc consola.ttf meiryo.ttc msgothic.ttc segoeui.ttf times.ttf YuGothM.ttc'.split(' ').map(n => sysFile(n, 300000, 16000000));
+  const wall = 'img0.jpg img19.jpg img100.jpg'.split(' ').map(n => sysFile(n, 200000, 900000));
+  const win = ['explorer.exe', 'notepad.exe', 'regedit.exe', 'win.ini', 'system.ini'].map(n => sysFile(n, 90, 5200000));
+  return sysDir('Windows', [
+    sysDir('System32', [sysDir('drivers', [...drivers, sysDir('etc', etc)]), sysDir('config', config), sysDir('ja-JP', ja), ...s32files]),
+    sysDir('Fonts', fonts), sysDir('Web', [sysDir('Wallpaper', [sysDir('Windows', wall)])]), ...win
+  ]);
+}
+let root = baseTree();
+const child = (dir, name) => dir.children.find(c => low(c.name) === low(name));
+function nodeAt(arr) { let n = root; for (const p of arr) { if (!n || n.type !== 'dir') return null; n = child(n, p); } return n || null; }
+const pathStr = arr => 'C:\\' + arr.join('\\');
+const samePath = (a, b) => a.length === b.length && a.every((x, i) => low(x) === low(b[i]));
+const isPrefix = (a, b) => a.length <= b.length && a.every((x, i) => low(x) === low(b[i]));
+function canon(arr) { const out = []; let n = root; for (const p of arr) { n = child(n, p); out.push(n.name); } return out; }
+function resolve(p, cwd) {
+  p = p.replace(/\//g, '\\');
+  let parts;
+  if (/^[a-z]:/i.test(p)) { if (!/^c:/i.test(p)) return null; p = p.slice(2); parts = p.startsWith('\\') ? [] : [...cwd]; }
+  else if (p.startsWith('\\')) parts = [];
+  else parts = [...cwd];
+  for (const seg of p.split('\\')) { if (!seg || seg === '.') continue; if (seg === '..') { parts.pop(); continue; } parts.push(seg); }
+  return parts;
+}
+const sizeOf = n => n.size ?? new TextEncoder().encode(n.content).length;
+const clone = n => n.type === 'dir' ? { ...n, children: n.children.map(clone) } : { ...n };
+const BAD = /[\\/:*?"<>|]/;
+const collator = new Intl.Collator('ja', { numeric: true });
+const sorted = dir => [...dir.children].sort((a, b) => (a.type === b.type ? 0 : a.type === 'dir' ? -1 : 1) || collator.compare(a.name, b.name));
+function splitExt(name) { const i = name.lastIndexOf('.'); return i > 0 ? [name.slice(0, i), name.slice(i)] : [name, '']; }
+function uniqueName(dir, name) {
+  if (!child(dir, name)) return name;
+  const [b, e] = splitExt(name);
+  for (let i = 2; ; i++) { const n = `${b} (${i})${e}`; if (!child(dir, n)) return n; }
+}
+function copyName(dir, name) {
+  const [b, e] = splitExt(name);
+  let n = `${b} - コピー${e}`;
+  for (let i = 2; child(dir, n); i++) n = `${b} - コピー (${i})${e}`;
+  return n;
+}
+function doMove(src, destDir, newName) {
+  const node = nodeAt(src), sp = nodeAt(src.slice(0, -1)), dd = nodeAt(destDir);
+  if (!node) throw new Error('指定されたファイルが見つかりません。');
+  if (!dd || dd.type !== 'dir') throw new Error('指定されたパスが見つかりません。');
+  if (node.type === 'dir' && isPrefix(src, destDir)) throw new Error('フォルダーを、そのフォルダー自身の中へは移動できません。');
+  const name = newName || node.name;
+  const ex = child(dd, name);
+  if (ex === node) { node.name = name; return; }
+  if (ex) {
+    if (ex.type === 'dir' || node.type === 'dir') throw new Error(`「${name}」という名前はすでにあります。`);
+    dd.children.splice(dd.children.indexOf(ex), 1);
+  }
+  sp.children.splice(sp.children.indexOf(node), 1);
+  node.name = name; node.mtime = new Date();
+  dd.children.push(node);
+}
+function doCopy(src, destDir, newName, dupRename) {
+  const node = nodeAt(src), dd = nodeAt(destDir);
+  if (!node) throw new Error('指定されたファイルが見つかりません。');
+  if (!dd || dd.type !== 'dir') throw new Error('指定されたパスが見つかりません。');
+  if (node.type === 'dir' && isPrefix(src, destDir)) throw new Error('コピー先が、コピー元のフォルダーの中にあります。');
+  let name = newName || node.name;
+  const ex = child(dd, name);
+  if (ex) {
+    if (dupRename) name = copyName(dd, node.name);
+    else if (ex === node) throw new Error('ファイルをそれ自体にコピーすることはできません。');
+    else if (ex.type === 'dir' || node.type === 'dir') throw new Error(`「${name}」という名前はすでにあります。`);
+    else dd.children.splice(dd.children.indexOf(ex), 1);
+  }
+  const c = clone(node); c.name = name; c.mtime = new Date();
+  dd.children.push(c);
+}
+function doDelete(p) { const node = nodeAt(p), sp = nodeAt(p.slice(0, -1)); if (node && sp) sp.children.splice(sp.children.indexOf(node), 1); }
+
+/* ---------- state ---------- */
+const gui = { cwd: [...HOME], back: [], sel: new Set(), anchor: null, clip: null, renaming: null };
+const cui = { cwd: [...HOME], hist: [], hi: 0 };
+let opened = new Set();
+let batRan = false;
+let run = null;
+let view = window.innerWidth >= 1000 ? 'both' : 'gui';
+let openMission = 1;
+
+/* ---------- missions ---------- */
+const countDirs = (prefix, n) => { const h = nodeAt(HOME); let c = 0; for (let i = 1; i <= n; i++) { const x = child(h, prefix + i); if (x && x.type === 'dir') c++; } return c; };
+const MISSIONS = [
+  { id: 1, title: 'ファイルを移動する', goal: '「宿題.txt」を「提出」フォルダの中へ移動しよう。', modes: ['gui', 'cui'],
+    check: () => !!nodeAt([...HOME, '提出', '宿題.txt']) && !nodeAt([...HOME, '宿題.txt']),
+    hintGui: '「宿題.txt」のアイコンを、「提出」フォルダのアイコンの上までドラッグアンドドロップします。',
+    hintCui: ['move 宿題.txt 提出', 'move（移動）　宿題.txt（何を）　提出（どこへ）の順に、半角スペースで区切って入力します。'] },
+  { id: 2, title: 'ファイルを開く', goal: '「写真」フォルダの中にある「文化祭.jpg」を開いて見よう。', modes: ['gui', 'cui'],
+    check: () => opened.has('文化祭.jpg'),
+    hintGui: '「写真」フォルダをダブルクリックして開き、「文化祭.jpg」をダブルクリックします。',
+    hintCui: ['cd 写真', 'start 文化祭.jpg', 'cd でフォルダーに入り、start でファイルを開きます。dir で中身を確かめられます。'] },
+  { id: 3, title: 'ファイルをコピーする', goal: '「レポート.docx」を「バックアップ」フォルダにコピーしよう。元のファイルは残すこと。', modes: ['gui', 'cui'],
+    check: () => !!nodeAt([...HOME, 'バックアップ', 'レポート.docx']) && !!nodeAt([...HOME, 'レポート.docx']),
+    hintGui: '右クリック →「コピー」→「バックアップ」を開いて右クリック →「貼り付け」。Ctrl キーを押しながらドラッグしてもコピーになります。',
+    hintCui: ['copy レポート.docx バックアップ', 'copy（コピー）　何を　どこへ　の順です。'] },
+  { id: 4, title: 'フォルダを40個つくる', goal: '「番号1」「番号2」…「番号40」という名前のフォルダを、40個つくろう。', modes: ['gui', 'cui'], total: 40,
+    check: () => countDirs('番号', 40) === 40, progress: () => countDirs('番号', 40),
+    hintGui: '右クリック →「新しいフォルダー」→ 名前を入力して Enter。これを40回くり返します。',
+    hintCui: ['for /L %i in (1,1,40) do mkdir 番号%i', '「%i を 1 から 1 ずつ増やして 40 まで、mkdir 番号%i をくり返せ」という命令です。'] },
+  { id: 5, title: 'プログラムで自動化', tag: '発展', goal: 'メモ帳で「じどう.bat」というファイルをつくり、「班1」〜「班10」のフォルダをつくる命令を書いて実行しよう。', modes: ['cui'], total: 10,
+    check: () => batRan && countDirs('班', 10) === 10, progress: () => countDirs('班', 10),
+    hintCui: ['notepad じどう.bat', '1行目 → @echo off', '2行目 → for /L %%i in (1,1,10) do mkdir 班%%i', 'メモ帳には、@echo off と for の命令を Enter で改行して、別々の2行に書きます。保存して閉じてから「じどう」と入力して Enter。命令を書いたファイル（バッチファイル）は、小さなプログラムです。'] }
+];
+const RKEY = 'guicui-lab-results-v1';
+let results = {};
+try { results = JSON.parse(localStorage.getItem(RKEY) || '{}') || {}; } catch (e) { results = {}; }
+function saveResults() { try { localStorage.setItem(RKEY, JSON.stringify(results)); } catch (e) {} }
+
+/* ---------- icons ---------- */
+const FOLDER = '<svg viewBox="0 0 52 46"><path d="M3 8a3 3 0 0 1 3-3h13l4 5h23a3 3 0 0 1 3 3v25a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" fill="#D9A72B"/><path d="M3 15h46v23a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" fill="#F5C955"/></svg>';
+function fileIcon(name) {
+  const e = low(splitExt(name)[1]);
+  const color = { '.txt': '#6B7A8F', '.jpg': '#2F9460', '.docx': '#2F63C8', '.bat': '#8A5A14' }[e] || '#6B7A8F';
+  const label = (e.slice(1) || 'FILE').toUpperCase().slice(0, 4);
+  let art = '<path d="M16 17h20M16 22h20M16 27h14" stroke="#B8C1CD" stroke-width="2"/>';
+  if (e === '.jpg') art = '<rect x="14" y="12" width="24" height="17" rx="1.5" fill="#BFE3CC"/><path d="M14 29l8-9 6 6 4-4 6 7z" fill="#2F9460"/><circle cx="32" cy="17" r="2.5" fill="#F5C955"/>';
+  if (e === '.bat') art = '<circle cx="26" cy="21" r="6" fill="none" stroke="#8A5A14" stroke-width="3" stroke-dasharray="3 2.2"/><circle cx="26" cy="21" r="2" fill="#8A5A14"/>';
+  return `<svg viewBox="0 0 52 46"><path d="M10 2h24l9 9v33H10z" fill="#FFFFFF" stroke="#AEB8C5"/><path d="M34 2v9h9" fill="#E6EAF0" stroke="#AEB8C5"/>${art}<rect x="10" y="33" width="33" height="10" fill="${color}"/><text x="26.5" y="41" text-anchor="middle" font-size="8" font-family="monospace" font-weight="700" fill="#fff">${label}</text></svg>`;
+}
+const icon = n => n.type === 'dir' ? FOLDER : fileIcon(n.name);
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2600); }
+
+/* ---------- GUI ---------- */
+const itemsEl = $('#items'), explorer = $('#explorer');
+function guiDir() {
+  while (true) { const n = nodeAt(gui.cwd); if (n && n.type === 'dir') return n; gui.cwd.pop(); }
+}
+function renderGUI() {
+  const dir = guiDir();
+  const crumbs = [{ label: 'C:', path: [] }, ...gui.cwd.map((n, i) => ({ label: n, path: gui.cwd.slice(0, i + 1) }))];
+  $('#crumbs').innerHTML = '<span class="pc">PC</span>' + crumbs.map(c => `<span class="sep">›</span><button class="crumb" data-drop="1" data-path='${esc(JSON.stringify(c.path))}'>${esc(c.label)}</button>`).join('');
+  const kids = sorted(dir);
+  for (const s of [...gui.sel]) if (!child(dir, s)) gui.sel.delete(s);
+  const cutSet = gui.clip && gui.clip.mode === 'cut' ? new Set(gui.clip.items.map(p => low(pathStr(p)))) : new Set();
+  itemsEl.innerHTML = kids.length ? kids.map(n => {
+    const isSel = gui.sel.has(n.name);
+    const isCut = cutSet.has(low(pathStr([...gui.cwd, n.name])));
+    const lbl = gui.renaming === n.name
+      ? `<input class="ren" id="ren-input" value="${esc(n.name)}" aria-label="新しい名前">`
+      : `<span class="lbl">${esc(n.name)}</span>`;
+    return `<div class="item${isSel ? ' sel' : ''}${isCut ? ' cut' : ''}" data-name="${esc(n.name)}"${n.type === 'dir' ? ' data-drop="1"' : ''} title="${esc(n.name)}"><span class="ico">${icon(n)}</span>${lbl}</div>`;
+  }).join('') : '<div class="empty">このフォルダーは空です。</div>';
+  $('#btn-back').disabled = !gui.back.length;
+  $('#btn-up').disabled = !gui.cwd.length;
+  paintSel();
+  const ri = $('#ren-input');
+  if (ri) {
+    ri.focus();
+    const [b] = splitExt(ri.value);
+    const node = child(dir, gui.renaming);
+    ri.setSelectionRange(0, node && node.type === 'file' ? b.length : ri.value.length);
+  }
+}
+function paintSel() {
+  itemsEl.querySelectorAll('.item').forEach(el => el.classList.toggle('sel', gui.sel.has(el.dataset.name)));
+  const dir = guiDir();
+  const n = dir.children.length, s = gui.sel.size;
+  $('#gui-status').textContent = `${n} 個の項目` + (s ? `　　${s} 個の項目を選択` : '');
+  const r = $('#ribbon');
+  r.querySelector('[data-act="rename"]').disabled = s !== 1;
+  r.querySelector('[data-act="copy"]').disabled = !s;
+  r.querySelector('[data-act="cut"]').disabled = !s;
+  r.querySelector('[data-act="delete"]').disabled = !s;
+  r.querySelector('[data-act="paste"]').disabled = !gui.clip;
+}
+function orderNames() { return [...itemsEl.querySelectorAll('.item')].map(e => e.dataset.name); }
+function selectClick(name, e) {
+  if (e.ctrlKey || e.metaKey) { gui.sel.has(name) ? gui.sel.delete(name) : gui.sel.add(name); gui.anchor = name; }
+  else if (e.shiftKey && gui.anchor) {
+    const o = orderNames(); let a = o.indexOf(gui.anchor), b = o.indexOf(name);
+    if (a < 0) a = b; if (a > b) [a, b] = [b, a];
+    gui.sel = new Set(o.slice(a, b + 1));
+  } else { gui.sel = new Set([name]); gui.anchor = name; }
+  paintSel();
+}
+function goTo(path, push = true) {
+  if (push) gui.back.push([...gui.cwd]);
+  gui.cwd = canon(path); gui.sel.clear(); gui.renaming = null; renderGUI();
+}
+function openItem(name) {
+  const p = [...gui.cwd, name], n = nodeAt(p);
+  if (!n) return;
+  if (n.type === 'dir') goTo(p); else openFile(p);
+}
+function guiNewDir() {
+  const dir = guiDir(); const name = uniqueName(dir, '新しいフォルダー');
+  dir.children.push(D(name)); dir.children.at(-1).mtime = new Date();
+  gui.sel = new Set([name]); gui.renaming = name; afterChange();
+}
+function guiNewText() {
+  const dir = guiDir(); const name = uniqueName(dir, '新しいテキスト ドキュメント.txt');
+  const f = F(name, ''); f.mtime = new Date(); dir.children.push(f);
+  gui.sel = new Set([name]); gui.renaming = name; afterChange();
+}
+function guiRename() { if (gui.sel.size !== 1) return; gui.renaming = [...gui.sel][0]; renderGUI(); }
+let committing = false;
+function commitRename(ok) {
+  if (committing || gui.renaming == null) return;
+  committing = true;
+  const ri = $('#ren-input'); const old = gui.renaming; gui.renaming = null;
+  const val = ri ? ri.value.trim() : old;
+  if (ok && val && val !== old) {
+    const dir = guiDir(); const node = child(dir, old); const ex = child(dir, val);
+    if (BAD.test(val)) toast('ファイル名には次の文字は使えません： \\ / : * ? " < > |');
+    else if (ex && ex !== node) toast(`「${val}」という名前はすでにあります。`);
+    else if (node) { node.name = val; gui.sel = new Set([val]); }
+  }
+  afterChange();
+  committing = false;
+  explorer.focus({ preventScroll: true });
+}
+function guiDelete() {
+  if (!gui.sel.size) return;
+  const n = gui.sel.size;
+  for (const s of gui.sel) doDelete([...gui.cwd, s]);
+  gui.sel.clear(); afterChange(); toast(`${n} 個の項目を削除しました`);
+}
+function guiClip(mode) { if (!gui.sel.size) return; gui.clip = { mode, items: [...gui.sel].map(s => [...gui.cwd, s]) }; renderGUI(); }
+function guiPaste() {
+  if (!gui.clip) return;
+  let n = 0;
+  for (const src of gui.clip.items) {
+    try {
+      if (gui.clip.mode === 'copy') doCopy(src, gui.cwd, null, samePath(src.slice(0, -1), gui.cwd));
+      else if (!samePath(src.slice(0, -1), gui.cwd)) doMove(src, gui.cwd);
+      n++;
+    } catch (err) { toast(err.message); }
+  }
+  if (gui.clip.mode === 'cut') gui.clip = null;
+  afterChange();
+}
+function dropInto(dest, copy) {
+  if (samePath(dest, gui.cwd)) return;
+  let n = 0;
+  for (const s of [...gui.sel]) {
+    try { copy ? doCopy([...gui.cwd, s], dest) : doMove([...gui.cwd, s], dest); n++; } catch (err) { toast(err.message); }
+  }
+  if (!copy) gui.sel.clear();
+  afterChange();
+  if (n) toast(`${n} 個の項目を「${dest.at(-1) || 'C:'}」へ${copy ? 'コピー' : '移動'}しました`);
+}
+
+// pointer: select, drag and drop
+let drag = null, hoverEl = null;
+function dropTargetAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  const t = el && el.closest('[data-drop]');
+  if (!t) return null;
+  if (t.classList.contains('item')) { if (gui.sel.has(t.dataset.name)) return null; return { el: t, path: [...gui.cwd, t.dataset.name] }; }
+  return { el: t, path: JSON.parse(t.dataset.path) };
+}
+itemsEl.addEventListener('pointerdown', e => {
+  hideCtx();
+  if (e.target.closest('.ren')) return;
+  if (gui.renaming != null) commitRename(true);
+  const it = e.target.closest('.item');
+  if (e.pointerType === 'mouse') explorer.focus({ preventScroll: true });
+  if (!it) { if (e.button === 0 && !e.ctrlKey && !e.shiftKey) { gui.sel.clear(); paintSel(); } return; }
+  const name = it.dataset.name;
+  if (e.button === 2) { if (!gui.sel.has(name)) { gui.sel = new Set([name]); gui.anchor = name; paintSel(); } return; }
+  if (e.button !== 0) return;
+  let pending = null;
+  if (!e.ctrlKey && !e.shiftKey && gui.sel.has(name)) pending = name; else selectClick(name, e);
+  drag = { x: e.clientX, y: e.clientY, started: false, pending };
+});
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (!drag.started) { if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return; drag.started = true; $('#ghost').hidden = false; }
+  const g = $('#ghost');
+  g.style.left = e.clientX + 14 + 'px'; g.style.top = e.clientY + 12 + 'px';
+  const t = dropTargetAt(e.clientX, e.clientY);
+  if (hoverEl && (!t || t.el !== hoverEl)) { hoverEl.classList.remove('drop-hover'); hoverEl = null; }
+  if (t) { t.el.classList.add('drop-hover'); hoverEl = t.el; }
+  const where = t ? `「${t.path.at(-1) || 'C:'}」へ` : '';
+  g.textContent = `${gui.sel.size} 個の項目 ${where}${e.ctrlKey ? '＋コピー' : (t ? '移動' : '')}`;
+});
+window.addEventListener('pointerup', e => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  $('#ghost').hidden = true;
+  if (hoverEl) { hoverEl.classList.remove('drop-hover'); hoverEl = null; }
+  if (d.started) { const t = dropTargetAt(e.clientX, e.clientY); if (t) dropInto(t.path, e.ctrlKey); }
+  else if (d.pending) { gui.sel = new Set([d.pending]); gui.anchor = d.pending; paintSel(); }
+});
+window.addEventListener('pointercancel', () => { drag = null; $('#ghost').hidden = true; });
+itemsEl.addEventListener('dblclick', e => { const it = e.target.closest('.item'); if (it && !e.target.closest('.ren')) openItem(it.dataset.name); });
+itemsEl.addEventListener('keydown', e => {
+  if (!e.target.classList.contains('ren')) return;
+  e.stopPropagation();
+  if (e.key === 'Enter') { e.preventDefault(); commitRename(true); }
+  if (e.key === 'Escape') { e.preventDefault(); commitRename(false); }
+});
+itemsEl.addEventListener('focusout', e => { if (e.target.classList.contains('ren')) setTimeout(() => commitRename(true), 0); });
+$('#crumbs').addEventListener('click', e => { const c = e.target.closest('.crumb'); if (c) goTo(JSON.parse(c.dataset.path)); });
+$('#btn-back').addEventListener('click', () => { if (gui.back.length) { gui.cwd = gui.back.pop(); gui.sel.clear(); renderGUI(); } });
+$('#btn-up').addEventListener('click', () => { if (gui.cwd.length) goTo(gui.cwd.slice(0, -1)); });
+$('#ribbon').addEventListener('click', e => { const b = e.target.closest('button'); if (b) doAct(b.dataset.act); });
+function doAct(a) {
+  hideCtx();
+  ({ newdir: guiNewDir, newtext: guiNewText, rename: guiRename, delete: guiDelete, paste: guiPaste,
+     copy: () => guiClip('copy'), cut: () => guiClip('cut'),
+     open: () => { if (gui.sel.size) openItem([...gui.sel][0]); } }[a] || (() => {}))();
+}
+explorer.addEventListener('keydown', e => {
+  if (e.target.classList.contains('ren')) return;
+  const k = e.key, c = e.ctrlKey || e.metaKey;
+  if (k === 'Delete') { e.preventDefault(); guiDelete(); }
+  else if (k === 'F2') { e.preventDefault(); guiRename(); }
+  else if (c && e.shiftKey && low(k) === 'n') { e.preventDefault(); guiNewDir(); }
+  else if (c && low(k) === 'a') { e.preventDefault(); gui.sel = new Set(orderNames()); paintSel(); }
+  else if (c && low(k) === 'c') { e.preventDefault(); guiClip('copy'); }
+  else if (c && low(k) === 'x') { e.preventDefault(); guiClip('cut'); }
+  else if (c && low(k) === 'v') { e.preventDefault(); guiPaste(); }
+  else if (k === 'Enter' && gui.sel.size) { e.preventDefault(); openItem([...gui.sel][0]); }
+  else if (k === 'Backspace' || (e.altKey && k === 'ArrowLeft')) { e.preventDefault(); $('#btn-back').click(); }
+  else if (e.altKey && k === 'ArrowUp') { e.preventDefault(); $('#btn-up').click(); }
+});
+
+// context menu
+const ctx = $('#ctx');
+function hideCtx() { ctx.hidden = true; }
+itemsEl.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const onItem = !!e.target.closest('.item');
+  const k = (a, label, key, dis) => `<button data-act="${a}"${dis ? ' disabled' : ''}>${label}<kbd>${key || ''}</kbd></button>`;
+  ctx.innerHTML = onItem
+    ? k('open', '開く', 'Enter') + '<hr>' + k('cut', '切り取り', 'Ctrl+X') + k('copy', 'コピー', 'Ctrl+C') + '<hr>' + k('rename', '名前の変更', 'F2', gui.sel.size !== 1) + k('delete', '削除', 'Delete')
+    : k('newdir', '新しいフォルダー', 'Ctrl+Shift+N') + k('newtext', '新しいテキスト ドキュメント') + '<hr>' + k('paste', '貼り付け', 'Ctrl+V', !gui.clip);
+  ctx.hidden = false;
+  const r = ctx.getBoundingClientRect();
+  ctx.style.left = Math.min(e.clientX, innerWidth - r.width - 8) + 'px';
+  ctx.style.top = Math.min(e.clientY, innerHeight - r.height - 8) + 'px';
+});
+ctx.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) doAct(b.dataset.act); });
+document.addEventListener('pointerdown', e => { if (!ctx.hidden && !ctx.contains(e.target)) hideCtx(); });
+
+/* ---------- app windows (notepad / photo / doc) ---------- */
+const layer = $('#winlayer');
+let winFocusBack = null;
+function photoSVG(name) {
+  const kind = name.includes('文化祭') ? 'fes' : name.includes('体育祭') ? 'sp' : name.includes('修学旅行') ? 'trip' : 'etc';
+  let s = '';
+  if (kind === 'fes') {
+    s += '<rect width="320" height="200" fill="#1C2442"/><rect y="132" width="320" height="68" fill="#3B2C26"/>';
+    s += '<path d="M0 24 Q160 58 320 24" fill="none" stroke="#9A8F7A" stroke-width="1.5"/>';
+    const cols = ['#E8513F', '#F2B33D', '#E8513F', '#F2B33D', '#E8513F', '#F2B33D', '#E8513F', '#F2B33D', '#E8513F'];
+    cols.forEach((c, i) => { const x = 16 + i * 36; const y = 24 + Math.sin(Math.PI * x / 320) * 17 + 9; s += `<ellipse cx="${x}" cy="${y}" rx="9" ry="11" fill="${c}"/><rect x="${x - 5}" y="${y - 13}" width="10" height="3" fill="#2A2A2A"/>`; });
+    s += '<rect x="62" y="72" width="196" height="66" fill="#8C2E3C"/><rect x="72" y="80" width="176" height="50" fill="#F4E5C6"/><text x="160" y="113" text-anchor="middle" font-size="22" font-weight="700" fill="#8C2E3C" font-family="sans-serif">文化祭 2026</text>';
+  } else if (kind === 'sp') {
+    s += '<rect width="320" height="200" fill="#8FC7F0"/><rect y="110" width="320" height="90" fill="#6BB35A"/><ellipse cx="160" cy="160" rx="140" ry="34" fill="none" stroke="#D2693F" stroke-width="14"/><ellipse cx="160" cy="160" rx="140" ry="34" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="6 6"/>';
+    s += '<path d="M0 30 L320 30" stroke="#555" stroke-width="1"/>';
+    ['#E8513F', '#F2B33D', '#2F63C8', '#2F9460', '#fff', '#E8513F', '#F2B33D', '#2F63C8', '#2F9460', '#fff'].forEach((c, i) => { const x = 8 + i * 32; s += `<path d="M${x} 30 L${x + 22} 30 L${x + 11} 48z" fill="${c}"/>`; });
+    s += '<text x="160" y="92" text-anchor="middle" font-size="26" font-weight="700" fill="#1C3D66" font-family="sans-serif">体育祭</text>';
+  } else if (kind === 'trip') {
+    s += '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9EC3E6"/><stop offset="1" stop-color="#F6CDA5"/></linearGradient></defs><rect width="320" height="200" fill="url(#sky)"/>';
+    s += '<path d="M40 150 L150 40 L260 150z" fill="#5B6F8F"/><path d="M128 62 L150 40 L172 62 L162 58 L150 66 L138 58z" fill="#fff"/><rect y="148" width="320" height="52" fill="#6F8B5A"/>';
+    s += '<rect x="236" y="92" width="44" height="8" fill="#8A3B2E"/><rect x="242" y="100" width="32" height="16" fill="#C9A77A"/><rect x="230" y="116" width="56" height="8" fill="#8A3B2E"/><rect x="238" y="124" width="40" height="26" fill="#C9A77A"/>';
+    s += '<text x="90" y="186" text-anchor="middle" font-size="18" font-weight="700" fill="#fff" font-family="sans-serif">修学旅行</text>';
+  } else {
+    s += '<rect width="320" height="200" fill="#9AA5B5"/><path d="M40 170 L130 70 L200 140 L240 110 L300 170z" fill="#5B6676"/>';
+  }
+  return `<svg viewBox="0 0 320 200" role="img" aria-label="${esc(name)}">${s}</svg>`;
+}
+function openFile(p) {
+  const node = nodeAt(p);
+  if (!node || node.type !== 'file') return;
+  if (node.sys) { toast(`「${node.name}」は OS のファイルです（練習用なので中身はありません）`); return; }
+  opened.add(node.name);
+  const ext = low(splitExt(node.name)[1]);
+  winFocusBack = document.activeElement;
+  let title, body;
+  if (ext === '.jpg') { title = `${node.name} - フォト`; body = `<div class="photo">${photoSVG(node.name)}</div>`; }
+  else if (ext === '.docx') { title = `${node.name} - ワープロ（閲覧）`; body = `<div class="docpage"><div>${esc(node.content)}</div></div>`; }
+  else {
+    title = `${node.name} - メモ帳`;
+    body = `<div class="np-menu" aria-hidden="true">ファイル(F) 編集(E) 表示(V)</div><textarea id="np-text" spellcheck="false" aria-label="本文">${esc(node.content)}</textarea><div class="np-foot"><span id="np-msg">${ext === '.bat' ? 'バッチファイル：書いた命令が上から順に実行されます' : ''}</span><button class="btn" id="np-save">保存 (Ctrl+S)</button></div>`;
+  }
+  layer.innerHTML = `<div class="appwin" role="dialog" aria-label="${esc(title)}"><div class="appwin-title"><span>${esc(title)}</span><button class="x" id="win-x" aria-label="閉じる">✕</button></div>${body}</div>`;
+  layer.hidden = false;
+  const ta = $('#np-text');
+  const save = () => { const n = nodeAt(p); if (n) { n.content = ta.value; n.size = null; n.mtime = new Date(); $('#np-msg').textContent = '保存しました'; afterChange(); } };
+  if (ta) {
+    ta.focus();
+    $('#np-save').addEventListener('click', save);
+    ta.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && low(e.key) === 's') { e.preventDefault(); save(); } });
+  } else $('#win-x').focus();
+  $('#win-x').addEventListener('click', closeWin);
+  afterChange();
+}
+function closeWin() {
+  layer.hidden = true; layer.innerHTML = '';
+  if (winFocusBack && document.contains(winFocusBack)) winFocusBack.focus({ preventScroll: true });
+  else if (view !== 'gui') $('#term-in').focus({ preventScroll: true });
+}
+layer.addEventListener('pointerdown', e => { if (e.target === layer) closeWin(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !layer.hidden) closeWin(); });
+
+/* ---------- CUI ---------- */
+const termOut = $('#term-out'), termIn = $('#term-in'), termBody = $('#term-body');
+const prompt = () => pathStr(cui.cwd) + '>';
+function appendLine(text, cls) {
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = text === '' ? '\u00a0' : text;
+  termOut.appendChild(d);
+}
+// \u5927\u91cf\u306e\u51fa\u529b\uff08dir /s \u306a\u3069\uff09\u306f\u6570\u884c\u305a\u3064\u6d41\u3057\u3066\u8868\u793a\u3059\u308b\u3002\u6d41\u308c\u3066\u3044\u308b\u9593\u306f Ctrl+C \u3067\u6b62\u3081\u3089\u308c\u308b
+const outQ = [];
+let streamDepth = 0, flushing = false;
+function out(text = '', cls) {
+  if (streamDepth || outQ.length) { outQ.push([text, cls]); kickFlush(); return; }
+  appendLine(text, cls);
+}
+function kickFlush() {
+  if (flushing) return;
+  flushing = true;
+  $('.term-line').style.opacity = '0';
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let last = performance.now();
+  const step = () => {
+    const now = performance.now();
+    const n = reduce ? outQ.length : Math.max(1, Math.round((now - last) * 0.2)); // 約200行/秒
+    last = now;
+    for (let i = 0; i < n && outQ.length; i++) appendLine(...outQ.shift());
+    termBody.scrollTop = termBody.scrollHeight;
+    if (outQ.length) { setTimeout(step, 16); return; }
+    flushing = false;
+    $('.term-line').style.opacity = '';
+    termBody.scrollTop = termBody.scrollHeight;
+    if (view !== 'gui' && layer.hidden) termIn.focus({ preventScroll: true });
+  };
+  setTimeout(step, 16);
+}
+const waitFlush = () => new Promise(r => { const t = setInterval(() => { if (!flushing && !outQ.length) { clearInterval(t); r(); } }, 50); });
+function updatePrompt() {
+  while (true) { const n = nodeAt(cui.cwd); if (n && n.type === 'dir') break; cui.cwd.pop(); }
+  $('#term-prompt').textContent = prompt();
+  termBody.scrollTop = termBody.scrollHeight;
+}
+function welcome() {
+  outQ.length = 0;
+  termOut.innerHTML = '';
+  out('コマンド プロンプト（練習用シミュレーター）');
+  out('help と入力して Enter キーを押すと、使えるコマンドの一覧が出ます。', 't-note');
+  out('');
+}
+const tokenize = s => [...s.matchAll(/"([^"]*)"|(\S+)/g)].map(m => m[1] ?? m[2]);
+const wild = s => /[*?]/.test(s);
+const wildRe = s => new RegExp('^' + s.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
+function matches(arg) {
+  if (wild(arg)) {
+    const i = arg.replace(/\//g, '\\').lastIndexOf('\\');
+    const dp = i >= 0 ? arg.slice(0, i) || '\\' : '.';
+    const pat = i >= 0 ? arg.slice(i + 1) : arg;
+    const base = resolve(dp, cui.cwd); const dir = base && nodeAt(base);
+    if (!dir || dir.type !== 'dir') return [];
+    const re = wildRe(pat);
+    return sorted(dir).filter(n => re.test(n.name)).map(n => [...canon(base), n.name]);
+  }
+  const p = resolve(arg, cui.cwd);
+  return p && nodeAt(p) ? [canon(p)] : [];
+}
+const pad2 = n => String(n).padStart(2, '0');
+const fmtDate = d => `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}  ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+const num = n => n.toLocaleString('en-US');
+const HELP = [
+  'よく使うコマンド（大文字・小文字どちらでも動きます）',
+  '',
+  '  DIR      フォルダーの中身を一覧表示する      例) dir',
+  '           /S をつけると、中のフォルダーまで全部   例) dir /s　（Ctrl+C で止まる）',
+  '  CD       フォルダーを移動する                例) cd 写真　／　cd ..',
+  '  MKDIR    フォルダーをつくる（MD でも可）     例) mkdir 資料',
+  '  MOVE     ファイルやフォルダーを移動する      例) move 宿題.txt 提出',
+  '  COPY     ファイルをコピーする                例) copy レポート.docx バックアップ',
+  '  REN      名前を変える                        例) ren メモ.txt memo.txt',
+  '  DEL      ファイルを削除する                  例) del memo.txt',
+  '  RD       空のフォルダーを削除する            例) rd 資料',
+  '  TYPE     テキストファイルの中身を表示する    例) type メモ.txt',
+  '  START    ファイルをアプリで開く              例) start 文化祭.jpg',
+  '  NOTEPAD  メモ帳で開く（なければつくる）      例) notepad じどう.bat',
+  '  ECHO     文字を表示する・ファイルに書く      例) echo こんにちは > a.txt',
+  '  FOR      同じ命令をくり返す                  例) for /L %i in (1,1,5) do mkdir 班%i',
+  '  TREE     フォルダーの構造を図で表示する      例) tree /f',
+  '  CLS      画面を消す',
+  '  COLOR    文字と背景の色を変える              例) color 0a　／　color（元にもどす）',
+  '',
+  '  Tab キー … ファイル名の続きを自動で入力　　↑↓キー … 前に入力した命令を呼び出す',
+  '  * は「何の文字でも」という意味です。　例) move *.jpg 写真'
+];
+const USAGE = {
+  dir: 'DIR [場所]　　フォルダーの中にあるファイルとフォルダーの一覧を表示します。',
+  cd: 'CD [フォルダー名]　　今いるフォルダーを変えます。CD .. で1つ上へもどります。',
+  move: 'MOVE [何を] [どこへ]　　ファイルやフォルダーを移動します。',
+  copy: 'COPY [何を] [どこへ]　　ファイルをコピーします。',
+  mkdir: 'MKDIR [名前]　　新しいフォルダーをつくります。',
+  for: 'FOR /L %変数 IN (開始,増分,終了) DO コマンド　　コマンドをくり返します。',
+  ren: 'REN [今の名前] [新しい名前]　　名前を変えます。'
+};
+const CMD_COLORS = ['#0C0C0C', '#0037DA', '#13A10E', '#3A96DD', '#C50F1F', '#881798', '#C19C00', '#CCCCCC', '#767676', '#3B78FF', '#16C60C', '#61D6D6', '#E74856', '#B4009E', '#F9F1A5', '#F2F2F2'];
+const FOR_L = /^for\s+\/l\s+(%%?[a-z])\s+in\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*do\s+(.+)$/i;
+const FOR_S = /^for\s+(%%?[a-z])\s+in\s*\(([^)]*)\)\s*do\s+(.+)$/i;
+
+function exec(line, c = { depth: 0, echo: true }) {
+  line = line.replace(/\u3000/g, ' ').trim();
+  if (!line) return;
+  if (line.startsWith('@')) line = line.slice(1).trim();
+  let m;
+  if ((m = line.match(FOR_L)) || (m = line.match(FOR_S))) {
+    const isL = /^for\s+\/l/i.test(line);
+    const v = m[1].replace(/%/g, '');
+    let vals = [];
+    if (isL) {
+      const a = +m[2], st = +m[3], b = +m[4];
+      if (st === 0) { out('増分に 0 は使えません。', 't-err'); return; }
+      for (let i = a; st > 0 ? i <= b : i >= b; i += st) { vals.push(String(i)); if (vals.length > 500) { out('くり返しは 500 回までにしてください。', 't-err'); return; } }
+    } else vals = m[2].split(/[\s,]+/).filter(Boolean);
+    const body = isL ? m[5] : m[3];
+    const re = new RegExp('%%?' + v + '(?![a-z])', 'gi');
+    for (const val of vals) {
+      const cmd = body.replace(re, val);
+      if (c.echo) { out(''); out(prompt() + cmd); }
+      exec(cmd, c);
+    }
+    return;
+  }
+  // echo with redirect
+  if (/^echo(\s|\.|$)/i.test(line)) {
+    let rest = line.slice(4);
+    const r = rest.match(/^(.*?)\s*(>>?)\s*("[^"]+"|\S+)\s*$/);
+    let text = r ? r[1] : rest;
+    text = text.startsWith('.') ? text.slice(1) : text.replace(/^\s/, '');
+    if (!r && !text.trim() && !rest.startsWith('.')) { out('ECHO は <ON> です。'); return; }
+    if (r) {
+      const target = r[3].replace(/"/g, '');
+      const p = resolve(target, cui.cwd), dir = nodeAt(p.slice(0, -1));
+      if (!dir || dir.type !== 'dir') { out('指定されたパスが見つかりません。', 't-err'); return; }
+      let f = child(dir, p.at(-1));
+      if (f && f.type === 'dir') { out('アクセスが拒否されました。', 't-err'); return; }
+      if (!f) { f = F(p.at(-1), ''); dir.children.push(f); }
+      f.content = (r[2] === '>>' ? f.content : '') + text + '\n'; f.size = null; f.mtime = new Date();
+      return;
+    }
+    out(text); return;
+  }
+  if (/^cd(\.\.|\\)/i.test(line)) line = 'cd ' + line.slice(2);
+  const t = tokenize(line);
+  const cmd = low(t[0]);
+  const args = t.slice(1);
+  const plain = args.filter(a => !/^\/[a-z?]$/i.test(a));
+  const flags = args.filter(a => /^\/[a-z?]$/i.test(a)).map(low);
+  switch (cmd) {
+    case 'help':
+      if (plain[0] && USAGE[low(plain[0])]) out(USAGE[low(plain[0])]); else HELP.forEach(l => out(l));
+      return;
+    case 'cls': outQ.length = 0; termOut.innerHTML = ''; return;
+    case 'ver': out(''); out('練習用コマンド プロンプト [Version 1.0]'); return;
+    case 'whoami': out('pc01\\seito'); return;
+    case 'hostname': out('PC01'); return;
+    case 'date': out(fmtDate(new Date()).slice(0, 10)); return;
+    case 'time': out(fmtDate(new Date()).slice(12)); return;
+    case 'title': return;
+    case 'exit': out('（このページではウィンドウは閉じません）', 't-note'); return;
+    case 'pause': out('続行するには何かキーを押してください . . .'); return;
+    case 'rem': return;
+    case 'color': {
+      const tb = $('.term');
+      if (!plain[0]) { tb.style.removeProperty('--t-bg'); tb.style.removeProperty('--t-fg'); return; }
+      const s = plain[0].padStart(2, '0');
+      const bg = parseInt(s[0], 16), fg = parseInt(s[1], 16);
+      if (isNaN(bg) || isNaN(fg) || bg === fg || s.length !== 2) { out('COLOR 0a のように、背景と文字の色を2けたで指定します。', 't-err'); return; }
+      tb.style.setProperty('--t-bg', CMD_COLORS[bg]); tb.style.setProperty('--t-fg', CMD_COLORS[fg]);
+      return;
+    }
+    case 'cd': case 'chdir': {
+      if (!plain.length) { out(pathStr(cui.cwd)); return; }
+      const p = resolve(plain.join(' '), cui.cwd), n = p && nodeAt(p);
+      if (!n || n.type !== 'dir') { out('指定されたパスが見つかりません。', 't-err'); return; }
+      cui.cwd = canon(p); return;
+    }
+    case 'dir': {
+      if (flags.includes('/s')) { dirS(plain[0]); return; }
+      let base = cui.cwd, list, re = null;
+      if (plain[0]) {
+        if (wild(plain[0])) {
+          const ms = matches(plain[0]);
+          const i = plain[0].lastIndexOf('\\');
+          base = i >= 0 ? canon(resolve(plain[0].slice(0, i) || '\\', cui.cwd)) : cui.cwd;
+          list = ms.map(nodeAt); re = true;
+        } else {
+          const p = resolve(plain[0], cui.cwd), n = p && nodeAt(p);
+          if (!n) { out('ファイルが見つかりません'); return; }
+          if (n.type === 'dir') { base = canon(p); } else { base = canon(p).slice(0, -1); list = [n]; re = true; }
+        }
+      }
+      const dir = nodeAt(base);
+      if (!list) list = sorted(dir);
+      out(' ドライブ C のボリューム ラベルがありません。');
+      out(' ボリューム シリアル番号は 5A3C-19F2 です');
+      out('');
+      out(` ${pathStr(base)} のディレクトリ`);
+      out('');
+      if (!re && base.length) { out(`${fmtDate(dir.mtime)}    <DIR>          .`); out(`${fmtDate(dir.mtime)}    <DIR>          ..`); }
+      let nf = 0, nd = (!re && base.length) ? 2 : 0, bytes = 0;
+      for (const n of list) {
+        if (n.type === 'dir') { nd++; out(`${fmtDate(n.mtime)}    <DIR>          ${n.name}`); }
+        else { nf++; bytes += sizeOf(n); out(`${fmtDate(n.mtime)}  ${num(sizeOf(n)).padStart(16)} ${n.name}`); }
+      }
+      if (!list.length && re) { out('ファイルが見つかりません'); return; }
+      out(`${String(nf).padStart(15)} 個のファイル ${num(bytes).padStart(18)} バイト`);
+      out(`${String(nd).padStart(15)} 個のディレクトリ  120,779,776,512 バイトの空き領域`);
+      return;
+    }
+    case 'tree': {
+      const showF = flags.includes('/f');
+      const start = plain[0] ? resolve(plain[0], cui.cwd) : cui.cwd;
+      const sn = start && nodeAt(start);
+      if (!sn || sn.type !== 'dir') { out('無効なパスです - ' + (plain[0] || ''), 't-err'); return; }
+      out('フォルダー パスの一覧');
+      out('ボリューム シリアル番号は 5A3C-19F2 です');
+      out(plain[0] ? pathStr(canon(start)).toUpperCase() : 'C:.');
+      const walk = (dir, pre) => {
+        const ds = sorted(dir).filter(n => n.type === 'dir'), fs = sorted(dir).filter(n => n.type === 'file');
+        if (showF) { fs.forEach(f => out(pre + (ds.length ? '│  ' : '    ') + f.name)); if (fs.length) out(pre + (ds.length ? '│' : '')); }
+        ds.forEach((d, i) => { const last = i === ds.length - 1; out(pre + (last ? '└─' : '├─') + d.name); walk(d, pre + (last ? '    ' : '│  ')); });
+      };
+      walk(sn, '');
+      if (!sorted(sn).some(n => n.type === 'dir')) out('サブフォルダーは存在しません');
+      return;
+    }
+    case 'md': case 'mkdir': {
+      if (!plain.length) { out('コマンドの構文が誤っています。　例) mkdir 資料', 't-err'); return; }
+      for (const a of plain) {
+        const p = resolve(a, cui.cwd);
+        if (!p || !p.length) { out('コマンドの構文が誤っています。', 't-err'); continue; }
+        if (BAD.test(p.at(-1))) { out('ファイル名、ディレクトリ名、またはボリューム ラベルの構文が間違っています。', 't-err'); continue; }
+        if (nodeAt(p)) { out(`サブディレクトリまたはファイル ${a} は既に存在します。`, 't-err'); continue; }
+        let n = root;
+        for (const seg of p) { let x = child(n, seg); if (!x) { x = D(seg); x.mtime = new Date(); n.children.push(x); } n = x; }
+      }
+      return;
+    }
+    case 'rd': case 'rmdir': {
+      if (!plain.length) { out('コマンドの構文が誤っています。', 't-err'); return; }
+      for (const a of plain) {
+        const p = resolve(a, cui.cwd), n = p && nodeAt(p);
+        if (!n || n.type !== 'dir') { out('指定されたファイルが見つかりません。', 't-err'); continue; }
+        if (isPrefix(p, cui.cwd)) { out('プロセスはファイルにアクセスできません。別のプロセスが使用中です。', 't-err'); continue; }
+        if (n.children.length && !flags.includes('/s')) { out('ディレクトリが空ではありません。', 't-err'); continue; }
+        doDelete(p);
+      }
+      return;
+    }
+    case 'del': case 'erase': {
+      if (!plain.length) { out('コマンドの構文が誤っています。', 't-err'); return; }
+      const ms = matches(plain[0]);
+      if (!ms.length) { out(`${pathStr(resolve(plain[0], cui.cwd) || cui.cwd)} が見つかりませんでした。`, 't-err'); return; }
+      for (const p of ms) { const n = nodeAt(p); if (n.type === 'dir') { out(`「${n.name}」はフォルダーです。フォルダーは rd で削除します。`, 't-note'); continue; } doDelete(p); }
+      return;
+    }
+    case 'type': {
+      if (!plain.length) { out('コマンドの構文が誤っています。', 't-err'); return; }
+      const p = resolve(plain[0], cui.cwd), n = p && nodeAt(p);
+      if (!n) { out('指定されたファイルが見つかりません。', 't-err'); return; }
+      if (n.type === 'dir') { out('アクセスが拒否されました。', 't-err'); return; }
+      if (n.sys || /\.(jpg|docx)$/i.test(n.name)) { out('（文字ではないデータなので、読める形で表示できません。start で開きましょう）', 't-note'); return; }
+      opened.add(n.name);
+      n.content.split('\n').forEach(l => out(l));
+      return;
+    }
+    case 'start': case 'notepad': {
+      if (!plain.length) { if (cmd === 'notepad') out('notepad [ファイル名]　の形で入力します。', 't-note'); return; }
+      const p = resolve(plain.join(' '), cui.cwd);
+      let n = p && nodeAt(p);
+      if (!n && cmd === 'notepad' && p) {
+        const dir = nodeAt(p.slice(0, -1));
+        if (!dir || dir.type !== 'dir') { out('指定されたパスが見つかりません。', 't-err'); return; }
+        const f = F(p.at(-1), ''); f.mtime = new Date(); dir.children.push(f); n = f;
+        out(`新しいファイル「${f.name}」をつくりました。`, 't-note');
+      }
+      if (!n) { out(`ファイル名 ${plain.join(' ')} が見つかりません。`, 't-err'); return; }
+      if (n.type === 'dir') { toast('GUI の画面でフォルダーを開きました'); gui.back.push([...gui.cwd]); gui.cwd = canon(p); gui.sel.clear(); return; }
+      openFile(canon(p));
+      return;
+    }
+    case 'ren': case 'rename': {
+      if (plain.length < 2) { out('コマンドの構文が誤っています。　例) ren メモ.txt memo.txt', 't-err'); return; }
+      const p = resolve(plain[0], cui.cwd), n = p && nodeAt(p);
+      if (!n) { out('指定されたファイルが見つかりません。', 't-err'); return; }
+      if (/[\\/]/.test(plain[1]) || BAD.test(plain[1])) { out('コマンドの構文が誤っています。新しい名前には場所を書けません。', 't-err'); return; }
+      const dir = nodeAt(p.slice(0, -1)), ex = child(dir, plain[1]);
+      if (ex && ex !== n) { out('重複するファイル名が存在するか、またはファイルが見つかりません。', 't-err'); return; }
+      n.name = plain[1]; return;
+    }
+    case 'copy': case 'move': {
+      if (plain.length < 2) {
+        out(plain.length ? 'どこへ' + (cmd === 'copy' ? 'コピー' : '移動') + 'するかが書かれていません。　例) ' + cmd + ' 宿題.txt 提出' : 'コマンドの構文が誤っています。', 't-err');
+        return;
+      }
+      const srcArg = plain.slice(0, -1).join(' '), dstArg = plain.at(-1);
+      let srcs = matches(srcArg);
+      if (cmd === 'copy') {
+        srcs = srcs.flatMap(p => { const n = nodeAt(p); return n.type === 'dir' ? sorted(n).filter(x => x.type === 'file').map(x => [...p, x.name]) : [p]; });
+      }
+      if (!srcs.length) { out('指定されたファイルが見つかりません。', 't-err'); return; }
+      const dp = resolve(dstArg, cui.cwd), dn = dp && nodeAt(dp);
+      let destDir, newName = null;
+      if (dn && dn.type === 'dir') destDir = canon(dp);
+      else {
+        const par = dp && nodeAt(dp.slice(0, -1));
+        if (!par || par.type !== 'dir' || srcs.length > 1) { out('指定されたパスが見つかりません。', 't-err'); return; }
+        destDir = canon(dp.slice(0, -1)); newName = dp.at(-1);
+      }
+      let nf = 0, nd = 0;
+      for (const s of srcs) {
+        const isDir = nodeAt(s).type === 'dir';
+        try { cmd === 'copy' ? doCopy(s, destDir, newName) : doMove(s, destDir, newName); isDir ? nd++ : nf++; }
+        catch (err) { out(err.message, 't-err'); }
+      }
+      const verb = cmd === 'copy' ? 'コピーしました。' : '移動しました。';
+      if (nf || !nd) out(`${String(nf).padStart(8)} 個のファイルを${verb}`);
+      if (nd) out(`${String(nd).padStart(8)} 個のディレクトリを${verb}`);
+      return;
+    }
+  }
+  // file name typed directly: run .bat or open file
+  const direct = resolve(line.replace(/"/g, ''), cui.cwd);
+  let fn = direct && nodeAt(direct);
+  let fp = direct;
+  if (!fn && direct) { const alt = [...direct.slice(0, -1), direct.at(-1) + '.bat']; if (nodeAt(alt)) { fn = nodeAt(alt); fp = alt; } }
+  if (fn && fn.type === 'file') {
+    if (/\.bat$/i.test(fn.name)) runBat(canon(fp), c.depth);
+    else openFile(canon(fp));
+    return;
+  }
+  out(`'${t[0]}' は、内部コマンドまたは外部コマンド、`, 't-err');
+  out('操作可能なプログラムまたはバッチ ファイルとして認識されていません。', 't-err');
+  if (/[^\x00-\x7f]/.test(t[0]) && t.length > 1) out('ヒント：コマンドは半角英字で入力します。全角になっていないか確かめましょう。', 't-note');
+}
+// DIR /S：サブフォルダーの中まですべて一覧表示する（本物のコマンドプロンプトと同じ形式）
+function dirS(arg) {
+  let base = cui.cwd, re = null;
+  if (arg) {
+    if (wild(arg)) {
+      const i = arg.replace(/\//g, '\\').lastIndexOf('\\');
+      const bp = i >= 0 ? resolve(arg.slice(0, i) || '\\', cui.cwd) : cui.cwd;
+      const bn = bp && nodeAt(bp);
+      if (!bn || bn.type !== 'dir') { out('指定されたパスが見つかりません。', 't-err'); return; }
+      base = canon(bp); re = wildRe(i >= 0 ? arg.slice(i + 1) : arg);
+    } else {
+      const p = resolve(arg, cui.cwd), n = p && nodeAt(p);
+      if (!n) { out('ファイルが見つかりません'); return; }
+      if (n.type === 'dir') base = canon(p);
+      else { base = canon(p).slice(0, -1); re = wildRe(n.name); }
+    }
+  }
+  streamDepth++;
+  out(' ドライブ C のボリューム ラベルがありません。');
+  out(' ボリューム シリアル番号は 5A3C-19F2 です');
+  out('');
+  let tf = 0, tb = 0, td = 0;
+  const walk = p => {
+    const dir = nodeAt(p);
+    const list = sorted(dir).filter(n => !re || re.test(n.name));
+    if (list.length || !re) {
+      out(` ${pathStr(p)} のディレクトリ`);
+      out('');
+      if (!re && p.length) { out(`${fmtDate(dir.mtime)}    <DIR>          .`); out(`${fmtDate(dir.mtime)}    <DIR>          ..`); td += 2; }
+      let nf = 0, bytes = 0;
+      for (const n of list) {
+        if (n.type === 'dir') { td++; out(`${fmtDate(n.mtime)}    <DIR>          ${n.name}`); }
+        else { nf++; bytes += sizeOf(n); out(`${fmtDate(n.mtime)}  ${num(sizeOf(n)).padStart(16)} ${n.name}`); }
+      }
+      out(`${String(nf).padStart(15)} 個のファイル ${num(bytes).padStart(18)} バイト`);
+      out('');
+      tf += nf; tb += bytes;
+    }
+    sorted(dir).filter(n => n.type === 'dir').forEach(d => walk([...p, d.name]));
+  };
+  walk(base);
+  if (re && !tf && !td) out('ファイルが見つかりません');
+  else {
+    out('     ファイルの総数:');
+    out(`${String(tf).padStart(15)} 個のファイル ${num(tb).padStart(18)} バイト`);
+    out(`${String(td).padStart(15)} 個のディレクトリ  120,779,776,512 バイトの空き領域`);
+  }
+  streamDepth--;
+}
+function runBat(p, depth) {
+  if (depth > 3) { out('バッチファイルの呼び出しが深すぎます。', 't-err'); return; }
+  const n = nodeAt(p);
+  batRan = true;
+  let echoOn = true;
+  for (let raw of n.content.split(/\r?\n/)) {
+    raw = raw.replace(/\u3000/g, ' ').trim();
+    if (!raw) continue;
+    const silent = raw.startsWith('@');
+    if (silent) raw = raw.slice(1).trim();
+    if (/^echo\s+off$/i.test(raw)) { echoOn = false; continue; }
+    if (/^echo\s+off\s+\S/i.test(raw)) {
+      // 本物と同じく「off …」を表示したうえで、よくあるまちがいを知らせる
+      exec(raw, { depth: depth + 1, echo: echoOn });
+      out('ヒント：「@echo off」と次の命令が1行につながっています。メモ帳で「@echo off」のあとに Enter で改行し、別の行に書きましょう。', 't-note');
+      continue;
+    }
+    if (/^echo\s+on$/i.test(raw)) { echoOn = true; continue; }
+    if (/^(rem(\s|$)|::)/i.test(raw)) continue;
+    if (echoOn && !silent) { out(''); out(prompt() + raw); }
+    exec(raw, { depth: depth + 1, echo: echoOn });
+  }
+}
+function submit() {
+  const line = termIn.value;
+  termIn.value = '';
+  out(prompt() + line);
+  if (line.trim()) { cui.hist.push(line); }
+  cui.hi = cui.hist.length;
+  try { exec(line); } catch (err) { out('エラー：' + err.message, 't-err'); }
+  if (line.trim() && termOut.childNodes.length) out('');
+  updatePrompt();
+  afterChange();
+}
+let tabCtx = null;
+function tabComplete(back) {
+  const val = termIn.value, caret = termIn.selectionStart;
+  if (tabCtx && tabCtx.last === val && tabCtx.matches.length) {
+    tabCtx.idx = (tabCtx.idx + (back ? -1 : 1) + tabCtx.matches.length) % tabCtx.matches.length;
+  } else {
+    const before = val.slice(0, caret);
+    const q = (before.match(/"/g) || []).length % 2 === 1;
+    const start = q ? before.lastIndexOf('"') : before.lastIndexOf(' ') + 1;
+    const tok = before.slice(start).replace(/^"/, '');
+    const i = tok.lastIndexOf('\\');
+    const dirpart = i >= 0 ? tok.slice(0, i + 1) : '';
+    const base = i >= 0 ? tok.slice(i + 1) : tok;
+    const dp = resolve(dirpart || '.', cui.cwd), dir = dp && nodeAt(dp);
+    if (!dir || dir.type !== 'dir') return;
+    const ms = sorted(dir).filter(n => low(n.name).startsWith(low(base))).map(n => n.name);
+    if (!ms.length) return;
+    tabCtx = { prefix: val.slice(0, start), dirpart, after: val.slice(caret), matches: ms, idx: back ? ms.length - 1 : 0 };
+  }
+  let name = tabCtx.dirpart + tabCtx.matches[tabCtx.idx];
+  if (/\s/.test(name)) name = `"${name}"`;
+  termIn.value = tabCtx.prefix + name + tabCtx.after;
+  const pos = (tabCtx.prefix + name).length;
+  termIn.setSelectionRange(pos, pos);
+  tabCtx.last = termIn.value;
+}
+termIn.addEventListener('keydown', e => {
+  if (run && run.mode === 'cui' && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) bumpOps();
+  if (e.isComposing || e.keyCode === 229) return;
+  if (flushing) {
+    if (e.ctrlKey && low(e.key) === 'c') { e.preventDefault(); outQ.length = 0; appendLine('^C'); appendLine(''); }
+    if (e.key === 'Enter') e.preventDefault();
+    return;
+  }
+  if (e.key === 'Enter') { e.preventDefault(); tabCtx = null; submit(); }
+  else if (e.key === 'Tab') { e.preventDefault(); tabComplete(e.shiftKey); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if (cui.hi > 0) { cui.hi--; termIn.value = cui.hist[cui.hi]; } }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); if (cui.hi < cui.hist.length) { cui.hi++; termIn.value = cui.hist[cui.hi] || ''; } }
+  else if (e.key === 'Escape') { termIn.value = ''; }
+  else if ((e.ctrlKey) && low(e.key) === 'l') { e.preventDefault(); termOut.innerHTML = ''; }
+  else tabCtx = null;
+});
+termBody.addEventListener('pointerup', () => { if (!getSelection().toString()) termIn.focus({ preventScroll: true }); });
+
+/* ---------- ops counting ---------- */
+function bumpOps() { if (!run) return; run.ops++; $('#run-ops').innerHTML = `${run.ops}<small>回操作</small>`; }
+$('#pane-gui').addEventListener('pointerdown', () => { if (run && run.mode === 'gui') bumpOps(); });
+$('#pane-gui').addEventListener('keydown', e => { if (run && run.mode === 'gui' && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) bumpOps(); });
+ctx.addEventListener('pointerdown', () => { if (run && run.mode === 'gui') bumpOps(); });
+layer.addEventListener('pointerdown', () => bumpOps());
+layer.addEventListener('keydown', e => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) bumpOps(); });
+
+/* ---------- views ---------- */
+function setView(v) {
+  view = v;
+  $('#stage').dataset.view = v;
+  document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === v)));
+  if (v === 'cui') termIn.focus({ preventScroll: true });
+}
+document.querySelector('.modes').addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) setView(b.dataset.view); });
+
+/* ---------- mission runs ---------- */
+function resetWorld() {
+  root = baseTree();
+  Object.assign(gui, { cwd: [...HOME], back: [], sel: new Set(), anchor: null, clip: null, renaming: null });
+  cui.cwd = [...HOME];
+  opened = new Set(); batRan = false;
+  const tb = $('.term'); tb.style.removeProperty('--t-bg'); tb.style.removeProperty('--t-fg');
+  closeWin();
+}
+let tick = null;
+function startRun(id, mode) {
+  if (run) stopRun();
+  const m = MISSIONS.find(x => x.id === id);
+  resetWorld();
+  welcome();
+  if (mode === 'cui') { out(`ミッション${m.id}「${m.title}」を CUI で開始しました。`, 't-note'); out(m.goal, 't-note'); out(''); }
+  run = { m, mode, t0: performance.now(), ops: 0 };
+  setView(mode);
+  document.querySelectorAll('.modes button, #demo').forEach(b => b.disabled = true);
+  const box = $('#run');
+  box.hidden = false; box.classList.toggle('cui', mode === 'cui');
+  $('#run-chip').textContent = mode.toUpperCase(); $('#run-chip').classList.toggle('cui', mode === 'cui');
+  $('#run-title').textContent = `ミッション${m.id}　${m.title}`;
+  $('#run-ops').innerHTML = '0<small>回操作</small>';
+  $('#run-bar').hidden = !m.total; $('#run-giveup').hidden = !m.total;
+  $('#run-prog').hidden = !m.total;
+  renderGUI(); updatePrompt(); updateProgress();
+  tick = setInterval(() => { if (run) $('#run-time').innerHTML = `${((performance.now() - run.t0) / 1000).toFixed(1)}<small>秒</small>`; }, 100);
+  if (mode === 'gui') explorer.focus({ preventScroll: true }); else termIn.focus({ preventScroll: true });
+  box.scrollIntoView({ block: 'nearest' });
+}
+function updateProgress() {
+  if (!run || !run.m.total) return;
+  const p = run.m.progress();
+  $('#run-bar-i').style.width = (p / run.m.total * 100) + '%';
+  $('#run-prog').textContent = `できたフォルダ：${p} / ${run.m.total}`;
+}
+function stopRun() {
+  clearInterval(tick); run = null;
+  $('#run').hidden = true;
+  document.querySelectorAll('.modes button, #demo').forEach(b => b.disabled = false);
+}
+function finishRun(ok) {
+  const r = run; if (!r) return;
+  const t = (performance.now() - r.t0) / 1000;
+  const prog = r.m.progress ? r.m.progress() : null;
+  const rec = { t: +t.toFixed(1), ops: r.ops, ok, prog };
+  results[r.m.id] = results[r.m.id] || {};
+  const prev = results[r.m.id][r.mode];
+  if (!prev || (ok && (!prev.ok || rec.t < prev.t)) || (!ok && !prev.ok)) results[r.m.id][r.mode] = rec;
+  saveResults();
+  stopRun();
+  renderMissions(); renderResults();
+  const other = results[r.m.id][r.mode === 'gui' ? 'cui' : 'gui'];
+  let cmp = '';
+  if (ok && other && other.ok) {
+    const d = other.t - rec.t;
+    cmp = d > 0 ? `${r.mode === 'gui' ? 'CUI' : 'GUI'} のときより ${d.toFixed(1)} 秒速い！` : `${r.mode === 'gui' ? 'CUI' : 'GUI'} のときより ${(-d).toFixed(1)} 秒おそい`;
+  }
+  const c = $('#clear');
+  c.innerHTML = `<div class="clear-card ${ok ? 'ok' : 'stop'}" role="dialog" aria-label="結果"><h3>${ok ? 'クリア！' : '記録しました'}</h3>
+    <p>ミッション${r.m.id}「${esc(r.m.title)}」　<b>${r.mode.toUpperCase()}</b></p>
+    <div class="big">${rec.t.toFixed(1)} 秒　${rec.ops} 回</div>
+    ${prog != null && !ok ? `<p>できたフォルダ ${prog} / ${r.m.total}</p>` : ''}
+    ${cmp ? `<p><b>${cmp}</b></p>` : ''}
+    <p>${ok && !other && r.m.modes.length > 1 ? `次は ${r.mode === 'gui' ? 'CUI' : 'GUI'} で同じミッションに挑戦しよう。` : ''}</p>
+    <button class="btn" id="clear-ok">OK</button></div>`;
+  c.hidden = false;
+  $('#clear-ok').focus();
+  $('#clear-ok').addEventListener('click', () => { c.hidden = true; });
+}
+function afterChange() {
+  renderGUI();
+  if (!run) return;
+  updateProgress();
+  if (run.m.check()) setTimeout(() => { if (run && run.m.check()) finishRun(true); }, 350);
+}
+$('#run-stop').addEventListener('click', () => { stopRun(); toast('ミッションをやめました（記録はされません）'); });
+$('#run-giveup').addEventListener('click', () => finishRun(false));
+
+/* ---------- mission list and results ---------- */
+function fmtRec(r, total) {
+  if (!r) return '—';
+  return r.ok ? `${r.t.toFixed(1)}秒 / ${r.ops}回` : `中断 ${r.prog ?? 0}/${total} (${r.t.toFixed(0)}秒)`;
+}
+function renderMissions() {
+  $('#missions').innerHTML = MISSIONS.map(m => {
+    const r = results[m.id] || {};
+    const chip = md => m.modes.includes(md) ? `<span class="chip ${r[md] ? (r[md].ok ? 'done' : 'part') : ''}">${md.toUpperCase()} ${r[md] ? (r[md].ok ? r[md].t.toFixed(1) + '秒' : '中断') : '—'}</span>` : '';
+    const hints = [];
+    if (m.hintGui) hints.push(`<div><b>GUI：</b>${esc(m.hintGui)}</div>`);
+    if (m.hintCui) {
+      // 1行に1つずつ表示する（「1行目 → 」のようなラベルはコードの外に出す）
+      const cmds = m.hintCui.slice(0, -1).map(x => {
+        const k = x.indexOf(' → ');
+        return k < 0 ? `<code>${esc(x)}</code>` : `${esc(x.slice(0, k))}：<code>${esc(x.slice(k + 3))}</code>`;
+      }).join('<br>');
+      hints.push(`<div><b>CUI：</b>${cmds}<br>${esc(m.hintCui.at(-1))}</div>`);
+    }
+    return `<li class="mis${openMission === m.id ? ' open' : ''}" data-id="${m.id}">
+      <button class="mis-head" aria-expanded="${openMission === m.id}"><span class="mis-no">${m.id}</span><span class="mis-t">${esc(m.title)}${m.tag ? `<em>${m.tag}</em>` : ''}</span><span class="chips">${chip('gui')}${chip('cui')}</span></button>
+      <div class="mis-body"><p>${esc(m.goal)}</p>
+        <div class="mis-btns">${m.modes.map(md => `<button class="go go-${md}" data-go="${md}">${md === 'gui' ? 'GUI で挑戦' : '&gt;_ CUI で挑戦'}</button>`).join('')}</div>
+        <details><summary>ヒントを見る</summary><div class="hint">${hints.join('')}</div></details>
+      </div></li>`;
+  }).join('');
+}
+$('#missions').addEventListener('click', e => {
+  const li = e.target.closest('.mis'); if (!li) return;
+  const id = +li.dataset.id;
+  const go = e.target.closest('[data-go]');
+  if (go) { startRun(id, go.dataset.go); return; }
+  if (e.target.closest('.mis-head')) { openMission = openMission === id ? 0 : id; renderMissions(); }
+});
+function renderResults() {
+  const rows = MISSIONS.map(m => {
+    const r = results[m.id] || {};
+    const g = r.gui, c = r.cui;
+    const win = g && c && g.ok && c.ok ? (g.t < c.t ? 'gui' : c.t < g.t ? 'cui' : '') : (g && g.ok && c && !c.ok ? 'gui' : c && c.ok && g && !g.ok ? 'cui' : '');
+    return `<tr><td>${m.id}. ${esc(m.title)}</td><td class="${win === 'gui' ? 'win' : ''}">${m.modes.includes('gui') ? fmtRec(g, m.total) : '—'}</td><td class="${win === 'cui' ? 'win' : ''}">${fmtRec(c, m.total)}</td></tr>`;
+  }).join('');
+  $('#results').innerHTML = `<thead><tr><th>ミッション</th><th>GUI</th><th>CUI</th></tr></thead><tbody>${rows}</tbody>`;
+}
+$('#copy-results').addEventListener('click', async () => {
+  const lines = ['ミッション\tGUI\tCUI', ...MISSIONS.map(m => { const r = results[m.id] || {}; return `${m.id}. ${m.title}\t${m.modes.includes('gui') ? fmtRec(r.gui, m.total) : '—'}\t${fmtRec(r.cui, m.total)}`; })];
+  try { await navigator.clipboard.writeText(lines.join('\n')); toast('記録をコピーしました。ワークシートやメモに貼り付けられます'); }
+  catch (e) { toast('コピーできませんでした。表を選択してコピーしてください'); const rng = document.createRange(); rng.selectNodeContents($('#results')); const s = getSelection(); s.removeAllRanges(); s.addRange(rng); }
+});
+let clearArm = false;
+$('#clear-results').addEventListener('click', e => {
+  if (!clearArm) { clearArm = true; e.target.textContent = 'もう一度押すと消えます'; setTimeout(() => { clearArm = false; e.target.textContent = '記録を消す'; }, 3000); return; }
+  results = {}; saveResults(); renderMissions(); renderResults(); clearArm = false; e.target.textContent = '記録を消す'; toast('記録を消しました');
+});
+$('#reset-fs').addEventListener('click', () => { if (run) stopRun(); resetWorld(); welcome(); renderGUI(); updatePrompt(); toast('ファイルを最初の状態にもどしました'); });
+
+/* ---------- teacher demo ---------- */
+$('#demo').addEventListener('click', async () => {
+  if (run) return;
+  setView('cui');
+  const seq = ['color 0a', 'cd \\', 'dir /s', 'cd \\Users\\seito'];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('#demo').disabled = true;
+  for (const cmd of seq) {
+    termIn.value = '';
+    for (const ch of cmd) { termIn.value += ch; if (!reduce) await new Promise(r => setTimeout(r, 70)); }
+    await new Promise(r => setTimeout(r, reduce ? 50 : 350));
+    submit();
+    await waitFlush();
+    await new Promise(r => setTimeout(r, reduce ? 50 : 700));
+  }
+  $('#demo').disabled = false;
+  termIn.focus({ preventScroll: true });
+});
+
+/* ---------- boot ---------- */
+welcome();
+setView(view);
+renderGUI(); updatePrompt(); renderMissions(); renderResults();
+})();
+</script>
+
+</body>
+</html>
